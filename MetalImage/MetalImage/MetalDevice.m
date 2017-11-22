@@ -50,9 +50,14 @@ static MetalDevice *_sharedMetalDevice = nil;
     
     if (MetalImageBundle) {
         //load from dynamic framework
-        
         NSError *error = nil;
-        id<MTLLibrary> library = [_sharedMetalDevice.device newDefaultLibraryWithBundle:MetalImageBundle error:&error];
+        id<MTLLibrary> library = nil;
+        if ([_sharedMetalDevice.device respondsToSelector:@selector(newDefaultLibraryWithBundle:error:)]) {
+            library = [_sharedMetalDevice.device newDefaultLibraryWithBundle:MetalImageBundle error:&error];
+        } else {
+            NSString *libPath = [[MetalImageBundle bundlePath] stringByAppendingPathComponent:@"default.metallib"];
+            library = [_sharedMetalDevice.device newLibraryWithFile:libPath error:&error];
+        }
         
         if (error) {
             NSLog(@"load metal library failed. err: %@", error);
@@ -60,13 +65,12 @@ static MetalDevice *_sharedMetalDevice = nil;
         }
         
         return library;
-    }
-    else {
+    } else {
         //load from static library
         
         NSError *error = nil;
-        //        NSString *bundlePath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"Frameworks"];
-        NSString *libPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"MetalImageShader.metallib"];
+        // NSString *bundlePath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"Frameworks"];
+        NSString *libPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"default.metallib"];
         id<MTLLibrary> library = [_sharedMetalDevice.device newLibraryWithFile:libPath error:&error];
         
         if (error) {
@@ -90,7 +94,8 @@ static MetalDevice *_sharedMetalDevice = nil;
 }
 
 + (id<MTLCommandBuffer>)sharedCommandBuffer {
-    @synchronized (self) {
+    @synchronized (self)
+    {
         if (_sharedMetalDevice.commandBuffer == nil) {
             _sharedMetalDevice.commandBuffer = [_sharedMetalDevice.commandQueue commandBuffer];
             [_sharedMetalDevice.commandBuffer enqueue];
@@ -106,7 +111,8 @@ static MetalDevice *_sharedMetalDevice = nil;
 }
 
 + (void)commitCommandBufferWaitUntilDone:(BOOL)waitUtilDone {
-    @synchronized (self) {
+    @synchronized (self)
+    {
         [_sharedMetalDevice.commandBuffer commit];
         if (waitUtilDone) {
             [_sharedMetalDevice.commandBuffer waitUntilCompleted];

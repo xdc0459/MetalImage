@@ -17,8 +17,9 @@
 - (instancetype)initWithProcessingQueueName:(NSString *)queueName;
 
 - (NSString *)contextKey;
-
+#if kEnableMetalBuildAndUse
 - (CVMetalTextureCacheRef)coreVideoTextureCache;
+#endif
 - (MetalImageTextureCache *)textureCache;
 
 + (MetalImageContext *)sharedImageProcessingContext;

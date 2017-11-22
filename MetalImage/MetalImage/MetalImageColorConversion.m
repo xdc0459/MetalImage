@@ -105,14 +105,17 @@ float kColorConversion709Default[] = {
     id <MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
     NSAssert(computeEncoder != nil, @"Failed to create compute encode.");
     
-    MTLSize m_ThreadgroupSize = MTLSizeMake(16, 16, 1);
-    MTLSize m_ThreadgroupCount = MTLSizeMake(ceilf(width/16.0f), ceilf(height/16.0f), 1);
+    MTLFloat computeWidth = 16;
+    MTLSize m_ThreadgroupSize = MTLSizeMake(computeWidth, computeWidth, 1);
+    MTLSize m_ThreadgroupCount = MTLSizeMake(ceilf(width/computeWidth), ceilf(height/computeWidth), 1);
     
+    [computeEncoder pushDebugGroup:@"MIColorConversion"];
     [computeEncoder setComputePipelineState:k_yuv2rgb];
     [computeEncoder setTexture:y_texture atIndex:0];
     [computeEncoder setTexture:uv_texture atIndex:1];
     [computeEncoder setTexture:texture atIndex:2];
     [computeEncoder dispatchThreadgroups:m_ThreadgroupCount threadsPerThreadgroup:m_ThreadgroupSize];
+    [computeEncoder popDebugGroup];
     [computeEncoder endEncoding];
     
 //    __block dispatch_semaphore_t dispatchSemaphore = m_InflightSemaphore;

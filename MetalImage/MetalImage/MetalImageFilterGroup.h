@@ -11,12 +11,12 @@
 
 @interface MetalImageFilterGroup : MetalImageOutput<MetalImageInput>
 
-@property (nonatomic, strong) MetalImageOutput<MetalImageInput> *terminalFilter;
-@property (nonatomic, strong) NSArray<MetalImageOutput<MetalImageInput> *> *initialFilters;
+@property(readwrite, nonatomic, strong) MetalImageOutput<MetalImageInput> *terminalFilter;
+@property(readwrite, nonatomic, strong) NSArray *initialFilters;
 @property (nonatomic, assign) MTLClearColor bgClearColor;
 
-- (void)addFilter:(MetalImageFilter *)filter;
-- (void)removeFilter:(MetalImageFilter *)filter;
+- (void)addFilter:(MetalImageOutput<MetalImageInput> *)filter;
+- (void)removeFilter:(MetalImageOutput<MetalImageInput> *)filter;
 - (void)removeAllFilters;
 - (MetalImageOutput<MetalImageInput> *)filterAtIndex:(NSUInteger)filterIndex;
 - (NSUInteger)filterCount;

@@ -20,7 +20,9 @@ static int MetalSupportFastTextureLoad = -1;
     }_reference;
     
     NSUInteger _readLockCount;
+#if kEnableMetalBuildAndUse
     CVMetalTextureRef _textureRef;
+#endif
     CVPixelBufferRef _renderTarget;
 }
 
@@ -62,6 +64,7 @@ static int MetalSupportFastTextureLoad = -1;
 
 #pragma mark - Internal
 - (void)buildupTexture {
+#if kEnableMetalBuildAndUse
     if ([MetalImageTexture supportsFastTextureUpload]) {
         CVMetalTextureCacheRef coreVideoTextureCache = [[MetalImageContext sharedImageProcessingContext] coreVideoTextureCache];
         // Code originally sourced from http://allmybrain.com/2011/12/08/rendering-to-a-texture-with-ios-5-texture-cache-api/
@@ -96,6 +99,7 @@ static int MetalSupportFastTextureLoad = -1;
         MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:_size.x height:_size.y mipmapped:NO];
         _texture = [[MetalDevice sharedMTLDevice] newTextureWithDescriptor:descriptor];
     }
+#endif
 }
 
 - (void)teardownTexture {
@@ -106,10 +110,12 @@ static int MetalSupportFastTextureLoad = -1;
             _renderTarget = NULL;
         }
         
+#if kEnableMetalBuildAndUse
         if (_textureRef) {
             CFRelease(_textureRef);
             _textureRef = NULL;
         }
+#endif
     }
 }
 

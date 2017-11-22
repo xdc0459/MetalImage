@@ -76,29 +76,24 @@
     
     // Add the video frame output
     videoOutput = [[AVCaptureVideoDataOutput alloc] init];
-    [videoOutput setAlwaysDiscardsLateVideoFrames:NO];
+    videoOutput.alwaysDiscardsLateVideoFrames = NO;
     
+    OSType preferFormat;
     if ([MetalImageTexture supportsFastTextureUpload]) {
-        
-        _videoOutputPixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
-        
+        preferFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
         NSArray *supportedPixelFormats = videoOutput.availableVideoCVPixelFormatTypes;
-        for (NSNumber *currentPixelFormat in supportedPixelFormats)
-        {
-            if ([currentPixelFormat intValue] == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
-            {
-                _videoOutputPixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
+        for (NSNumber *currentPixelFormat in supportedPixelFormats) {
+            if ([currentPixelFormat intValue] == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
+                preferFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
                 break;
             }
         }
-        
-        [videoOutput setVideoSettings:@{(id)kCVPixelBufferPixelFormatTypeKey:@(_videoOutputPixelFormat)}];
         _conversion = [[MetalImageColorConversion alloc] init];
+    } else {
+        preferFormat = kCVPixelFormatType_32BGRA;
     }
-    else {
-        _videoOutputPixelFormat = kCVPixelFormatType_32BGRA;
-        [videoOutput setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
-    }
+    _videoOutputPixelFormat = preferFormat;
+    videoOutput.videoSettings = @{(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey : @(_videoOutputPixelFormat)};
     
     [videoOutput setSampleBufferDelegate:self queue:cameraProcessingQueue];
     
@@ -316,21 +311,15 @@
 
 - (void)processVideoSampleBuffer:(CMSampleBufferRef)sampleBuffer {
     
+#if kEnableMetalBuildAndUse
     if (capturePaused) {
         return;
     }
     
     CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    
-    int bytesPerRow = (int) CVPixelBufferGetBytesPerRow(pixelBuffer);
-//    int width = (int)CVPixelBufferGetWidth(pixelBuffer);
-    int height = (int)CVPixelBufferGetHeight(pixelBuffer);
-    
     if (CVPixelBufferIsPlanar(pixelBuffer)) {
-        
         // Check for YUV planar inputs to do RGB conversion
         if (CVPixelBufferGetPlaneCount(pixelBuffer) > 1) {
-            
             CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
             
             CVMetalTextureCacheRef coreVideoTextureCache = [[MetalImageContext sharedImageProcessingContext] coreVideoTextureCache];
@@ -339,44 +328,44 @@
             int width = (int)CVPixelBufferGetWidth(pixelBuffer);
             int height = (int)CVPixelBufferGetHeight(pixelBuffer);
             
-            CVMetalTextureRef y_texture;
-            int y_width = (int)CVPixelBufferGetWidthOfPlane(pixelBuffer, 0);
-            int y_height = (int)CVPixelBufferGetHeightOfPlane(pixelBuffer, 0);
-            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, coreVideoTextureCache, pixelBuffer, nil, MTLPixelFormatR8Unorm, y_width, y_height, 0, &y_texture);
-            
-            CVMetalTextureRef uv_texture;
-            int uv_width = (int)CVPixelBufferGetWidthOfPlane(pixelBuffer, 1);
-            int uv_height = (int)CVPixelBufferGetHeightOfPlane(pixelBuffer, 1);
-            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, coreVideoTextureCache, pixelBuffer, nil, MTLPixelFormatRG8Unorm, uv_width, uv_height, 1, &uv_texture);
-            
+            CVMetalTextureRef y_texture, uv_texture;
+            int y_width = (int)CVPixelBufferGetWidthOfPlane(pixelBuffer, 0), y_height = (int)CVPixelBufferGetHeightOfPlane(pixelBuffer, 0);
+            int uv_width = (int)CVPixelBufferGetWidthOfPlane(pixelBuffer, 1), uv_height = (int)CVPixelBufferGetHeightOfPlane(pixelBuffer, 1);
             NSAssert(y_width == (uv_width<<1) && y_height == (uv_height<<1), @"Data Invalid...");
             
-            id<MTLTexture> luma = CVMetalTextureGetTexture(y_texture);
-            id<MTLTexture> chroma = CVMetalTextureGetTexture(uv_texture);
-            
-            if (luma && chroma) {
-                CFTypeRef colorAttachments = CVBufferGetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, NULL);
-                [self updateColorConversionWithAttachments:colorAttachments];
-                
-                outputTexture = [[MetalImageContext sharedTextureCache] fetchTextureWithSize:MTLUInt2Make(width, height)];
-                [_conversion generateBGROutputTexture:[outputTexture texture] YPlane:luma UVPlane:chroma];
+            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, coreVideoTextureCache, pixelBuffer, nil, MTLPixelFormatR8Unorm, y_width, y_height, 0, &y_texture);
+            CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, coreVideoTextureCache, pixelBuffer, nil, MTLPixelFormatRG8Unorm, uv_width, uv_height, 1, &uv_texture);
+            if (y_texture && uv_texture) {
+                id<MTLTexture> luma = CVMetalTextureGetTexture(y_texture);
+                id<MTLTexture> chroma = CVMetalTextureGetTexture(uv_texture);
+                if (luma && chroma) {
+                    CFTypeRef colorAttachments = CVBufferGetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, NULL);
+                    [self updateColorConversionWithAttachments:colorAttachments];
+                    
+                    outputTexture = [[MetalImageContext sharedTextureCache] fetchTextureWithSize:MTLUInt2Make(width, height)];
+                    [_conversion generateBGROutputTexture:[outputTexture texture] YPlane:luma UVPlane:chroma];
+                } else {
+                    NSAssert(NO, @"luma or chroma failed");
+                }
+            } else {
+                NSAssert(NO, @"y_texture or uv_texture failed");
             }
-            
-            CVBufferRelease(y_texture);
-            CVBufferRelease(uv_texture);
+            if (y_texture) CVBufferRelease(y_texture);
+            if (uv_texture) CVBufferRelease(uv_texture);
             
             CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
-        }
-        else {
+        } else {
             NSAssert(NO, @"Data Invalid...");
         }
-    }
-    else {
+    } else {
+        int bytesPerRow = (int) CVPixelBufferGetBytesPerRow(pixelBuffer);
+        // int width = (int)CVPixelBufferGetWidth(pixelBuffer);
+        int height = (int)CVPixelBufferGetHeight(pixelBuffer);
         
         NSAssert(_videoOutputPixelFormat == kCVPixelFormatType_32BGRA, @"Wrong pixel format");
         CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
-        int width_expand = bytesPerRow >> 2;
         
+        int width_expand = bytesPerRow >> 2;
         outputTexture = [[MetalImageContext sharedTextureCache] fetchTextureWithSize:MTLUInt2Make(width_expand, height)];
         [[outputTexture texture] replaceRegion:MTLRegionMake2D(0,0,width_expand,height)
                                    mipmapLevel:0
@@ -386,6 +375,9 @@
         
         CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
     }
+#else
+    NSLog(@"Metal Image not support current device(Current device may simulator)");
+#endif
 }
 
 - (void)updateColorConversionWithAttachments:(CFTypeRef)colorAttachments {

@@ -40,7 +40,7 @@
     }
     
 #if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
-    __unsafe_unretained __typeof__ (self) weakSelf = self;
+    __weak __typeof__ (self) weakSelf = self;
     memoryWarningObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
         __typeof__ (self) strongSelf = weakSelf;
         if (strongSelf) {
@@ -147,7 +147,9 @@
         NSLog(@"purgeAllUnassignedTextures");
         [framebufferCache removeAllObjects];
         [framebufferTypeCounts removeAllObjects];
+#if kEnableMetalBuildAndUse
         CVMetalTextureCacheFlush([[MetalImageContext sharedImageProcessingContext] coreVideoTextureCache], 0);
+#endif
     }
 }
 

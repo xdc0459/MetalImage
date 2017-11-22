@@ -10,7 +10,6 @@
 #import "MetalImageFunction.h"
 #import "MetalImageTextureCache.h"
 #import "MetalDevice.h"
-#import <UIKit/UIKit.h>
 
 @implementation MetalImageFilter
 

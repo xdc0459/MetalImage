@@ -12,7 +12,9 @@
 #import <Metal/MTLCommandQueue.h>
 
 @interface MetalImageContext () {
+#if kEnableMetalBuildAndUse
     CVMetalTextureCacheRef _coreVideoTextureCache;
+#endif
     MetalImageTextureCache *_textureCache;
 }
 
@@ -72,6 +74,7 @@
 
 #pragma mark - Accessors
 
+#if kEnableMetalBuildAndUse
 - (CVMetalTextureCacheRef)coreVideoTextureCache {
     if (_coreVideoTextureCache == NULL)
     {
@@ -86,6 +89,7 @@
     
     return _coreVideoTextureCache;
 }
+#endif
 
 - (MetalImageTextureCache *)textureCache {
     if (_textureCache == nil)

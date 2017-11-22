@@ -47,6 +47,7 @@
 - (void)assembleRenderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder {
     NSParameterAssert(renderEncoder);
     
+    [renderEncoder pushDebugGroup:@"MILUTFilter"];
     [renderEncoder setDepthStencilState:_depthStencilState];
     [renderEncoder setRenderPipelineState:_pipelineState];
     [renderEncoder setVertexBuffer:_verticsBuffer offset:0 atIndex:0];
@@ -56,6 +57,7 @@
     [renderEncoder setFragmentTexture:[secondInputTexture texture] atIndex:1];
     [renderEncoder setFragmentBuffer:_buffer offset:0 atIndex:0];
     [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:MetalImageDefaultRenderVetexCount instanceCount:1];
+    [renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
 }
 

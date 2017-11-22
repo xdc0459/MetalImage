@@ -6,6 +6,8 @@
 //  Copyright © 2017年 fengshi. All rights reserved.
 //
 
+#define kEnableMetalBuildAndUse              (defined(__COREVIDEO_CVMETALTEXTURE_H__) && !TARGET_IPHONE_SIMULATOR)
+
 typedef float MTLFloat;
 typedef unsigned int MTLUInt;
 typedef bool MTLBool;

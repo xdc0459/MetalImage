@@ -26,6 +26,12 @@
     dispatch_semaphore_t frameRenderingSemaphore;
 }
 
+/// prefer video pixel format. default is kCVPixelFormatType_420YpCbCr8BiPlanarFullRange if camera support.
+/**
+ you can set it to kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, kCVPixelFormatType_32BGRA. System camera only support 3 mode now.
+ */
+@property (nonatomic, assign) OSType videoOutputPixelFormat;
+
 /// This sets the frame rate of the camera (iOS 5 and above only)
 /**
  Setting this to 0 or below will set the frame rate back to the default setting for a particular preset.
@@ -68,9 +74,11 @@
 - (void)switchCameraDevice;
 - (AVCaptureDevicePosition)cameraPosition;
 
+- (void)updateOrientation;
 
 /// Easy way to tell which cameras are present on device
 + (BOOL)isBackFacingCameraPresent;
 + (BOOL)isFrontFacingCameraPresent;
 
+- (void)processVideoSampleBuffer:(CMSampleBufferRef)sampleBuffer;
 @end

@@ -33,10 +33,12 @@
 
 @implementation MetalImageView
 
+#if kEnableMetalBuildAndUse
 +(Class)layerClass
 {
     return [CAMetalLayer class];
 }
+#endif
 
 - (instancetype)init {
     if (self = [super init]) {
@@ -69,11 +71,13 @@
     self.bgClearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
     
     id<MTLDevice> device = [MetalDevice sharedMTLDevice];
+#if kEnableMetalBuildAndUse
     CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
     metalLayer = (CAMetalLayer*) self.layer;
     metalLayer.device = device;
     metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
     metalLayer.framebufferOnly = YES;
+#endif
     
     inputRotationMode = kMetalImageNoRotation;
     
@@ -263,6 +267,7 @@
 
 - (void)newTextureReadyAtTime:(CMTime)frameTime atIndex:(NSInteger)textureIndex {
     
+#if kEnableMetalBuildAndUse
     runMetalOnMainQueueWithoutDeadlocking(^{
         
         CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
@@ -277,16 +282,18 @@
         colorAttachment.texture = [currentDrawable texture];
         
         id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_renderPassDescriptor];
+        [renderEncoder pushDebugGroup:@"MetalImageView"];
         [renderEncoder setDepthStencilState:_depthStencilState];
         [renderEncoder setRenderPipelineState:_pipelineState];
         [renderEncoder setVertexBuffer:_verticsBuffer offset:0 atIndex:0];
         [renderEncoder setVertexBuffer:_coordBuffer offset:0 atIndex:1];
         [renderEncoder setFragmentTexture:[firstInputTexture texture] atIndex:0];
         [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:MetalImageDefaultRenderVetexCount instanceCount:1];
+        [renderEncoder popDebugGroup];
         [renderEncoder endEncoding];
         
         [commandBuffer presentDrawable:currentDrawable];
-        
+        // iPhone5s iOS10.3相机渲染会有闪动，部分区域被渲染和前后帧交错渲染，应该和yuv转rgb有关，所以需要等待完成后才能不出现；如果相机直接输入bgra则不需要等待完成
         [MetalDevice commitCommandBufferWaitUntilDone:NO];
         
         currentDrawable = nil;
@@ -294,6 +301,7 @@
         [firstInputTexture unlock];
         firstInputTexture = nil;
     });
+#endif
 }
 
 @end

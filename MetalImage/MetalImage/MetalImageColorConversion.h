@@ -19,8 +19,6 @@ typedef NS_ENUM(NSUInteger, ColorConversionKernalFunction) {
 
 @property (nonatomic,assign) ColorConversionKernalFunction function;
 
-- (void)generateBGROutputTexture:(nonnull id<MTLTexture>)texture
-                          YPlane:(nonnull id<MTLTexture>)y_texture
-                         UVPlane:(nonnull id<MTLTexture>)uv_texture;
+- (void)generateBGROutputTexture:(id<MTLTexture>)texture YPlane:(id<MTLTexture>)y_texture UVPlane:(id<MTLTexture>)uv_texture;
 
 @end

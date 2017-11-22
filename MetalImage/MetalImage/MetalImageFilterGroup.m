@@ -11,7 +11,7 @@
 
 @interface MetalImageFilterGroup ()
 
-@property (nonatomic,strong) NSMutableArray<MetalImageFilter *> *filterArray;
+@property (nonatomic,strong) NSMutableArray <MetalImageOutput<MetalImageInput> *> *filterArray;
 
 @end
 
@@ -19,7 +19,7 @@
 
 - (instancetype)init {
     if (self = [super init]) {
-        self.filterArray = [NSMutableArray array];
+        _filterArray = [[NSMutableArray alloc] initWithCapacity:2];
     }
     return self;
 }
@@ -79,7 +79,7 @@
     }
 }
 
-- (MetalImageFilter *)filterAtIndex:(NSUInteger)filterIndex {
+- (MetalImageOutput<MetalImageInput> *)filterAtIndex:(NSUInteger)filterIndex {
     if (filterIndex < _filterArray.count) {
         @synchronized(self) {
             return _filterArray[filterIndex];
